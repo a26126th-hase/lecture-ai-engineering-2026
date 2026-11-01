@@ -36,16 +36,37 @@ def ask(question: str) -> str:
 
     return response.text
 
+def chat(first_question: str) -> None:
+    client = genai.Client(api_key=get_api_key())
+    session = client.chats.create(model=MODEL) # 履歴は SDK の Chat が持つ
+    question = first_question
+    while question:
+        response = session.send_message(question) # これまでの履歴＋今回の質問を送る
+        print(response.text)
+        usage = response.usage_metadata
+        if usage is not None:
+            print(
+                f"[トークン数] 入力: {usage.prompt_token_count}, "
+                f"出力: {usage.candidates_token_count}"
+            )
+        else:
+            print("[トークン数] 利用できません")
+        question = input("\n[続けて質問（空行で終了）] ").strip()
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="素のLLMに質問する")
+    parser.add_argument("--chat", action="store_true", help="会話を続ける")
     parser.add_argument("question", nargs="?", default=DEFAULT_QUESTION)
     args = parser.parse_args()
 
     print(f"[model] {MODEL}")
     print(f"[質問] {args.question}\n")
     try:
-        print(ask(args.question))
+        if args.chat:
+            chat(args.question)
+        else:
+            print(ask(args.question))
     except errors.APIError as e:
         print(api_error_message(e.code, e.message))
         raise SystemExit(1)
